@@ -1,0 +1,17 @@
+FFmpeg — 许可与来源
+==================
+
+本程序在 Windows 版中随附 FFmpeg 可执行文件（独立进程调用，未做链接）：
+
+  ffmpeg version 9.0.2-essentials_build-www.gyan.dev
+  Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 16.2.0 (Rev3, Built by MSYS2 project)
+
+该构建来自 https://www.gyan.dev/ffmpeg/builds/ ，为 GPLv3 版本。
+FFmpeg 是独立程序：本程序仅通过命令行调用它，不构成衍生作品。
+
+FFmpeg 源代码：https://ffmpeg.org/download.html
+GPLv3 许可证全文：https://www.gnu.org/licenses/gpl-3.0.txt
+
+Android 版通过 ffmpeg-kit（LGPL 变体，dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.9）
+调用 FFmpeg；其许可与源码见 https://github.com/ffmpegkit-maintained/ffmpeg-kit 。

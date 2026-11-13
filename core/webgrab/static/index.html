@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<title>网页抓取器</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">⤓</div>
+    <div class="brand-txt">
+      <h1>网页抓取器</h1>
+      <p id="status"><i class="dot"></i>连接中…</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button id="installBtnTop" class="chip mini hidden">放到桌面</button>
+    <button id="helpBtn" class="round" aria-label="设置">?</button>
+  </div>
+</header>
+
+<main>
+  <section class="card hero">
+    <div class="field">
+      <textarea id="urlInput" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off"
+        placeholder="粘贴链接"></textarea>
+      <button id="pasteBtn" class="paste">粘贴</button>
+    </div>
+    <button id="goBtn" class="primary">
+      <span class="spinner hidden" id="btnSpin"></span>
+      <span id="btnText">解析</span>
+    </button>
+    <button id="demoBtn" class="ghostlink">示例</button>
+  </section>
+
+  <section id="convertCard" class="card convert">
+    <div class="fmt-row" id="fmtRow">
+      <button class="fmt on" data-fmt="mp3">MP3</button>
+      <button class="fmt" data-fmt="m4a">M4A</button>
+      <button class="fmt" data-fmt="wav">WAV</button>
+    </div>
+    <div class="conv-row">
+      <label class="filepick" id="filePick" for="videoFile">
+        <input id="videoFile" type="file" accept="video/*" hidden>
+        <span class="fp-ico">＋</span>
+        <span id="fileLabel">视频</span>
+      </label>
+      <button id="convBtn" class="primary small" disabled>转换</button>
+    </div>
+    <div id="convStatus" class="conv-status hidden">
+      <div class="pv-track small"><div id="convFill" class="pv-fill"></div></div>
+      <div class="conv-line"><span id="convText">准备中…</span><span id="convTime"></span></div>
+    </div>
+  </section>
+
+  <div id="wvTip" class="banner hidden">
+    当前在 App 内打开，下载可能被拦。点这里复制网址，到系统浏览器里打开。
+    <button id="copyUrl" class="link">复制网址</button>
+  </div>
+
+  <section id="progress" class="card progress hidden">
+    <div class="pv-top">
+      <div class="pv-title">
+        <span class="spinner"></span>
+        <span id="pvText">正在打开网页…</span>
+      </div>
+      <span id="pvTime" class="pv-time">0.0s</span>
+    </div>
+    <div class="pv-track"><div id="pvFill" class="pv-fill"></div></div>
+    <div class="pv-steps">
+      <span class="pv-step" data-s="open"><i></i>打开</span>
+      <span class="pv-step" data-s="probe"><i></i>分析</span>
+      <span class="pv-step" data-s="engine"><i></i>解析</span>
+      <span class="pv-step" data-s="done"><i></i>完成</span>
+    </div>
+  </section>
+
+  <section id="error" class="card error hidden">
+    <div class="err-icon">!</div>
+    <div class="err-body">
+      <h3>没解析成功</h3>
+      <p id="errText"></p>
+      <div class="err-actions">
+        <button id="retryBtn" class="chip">重试</button>
+        <button id="errDemoBtn" class="chip">示例</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="page-head">
+      <div class="ph-row">
+        <h2 id="pageTitle">—</h2>
+        <button id="dlAll" class="chip mini">全部下载</button>
+        <button id="newLink" class="chip mini">换链接</button>
+      </div>
+      <p id="pageMeta"></p>
+      <p id="engineNote" class="engine hidden"></p>
+    </div>
+    <nav id="tabs" class="tabs"></nav>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="card empty hidden">
+      <p>这个页面没有能下载的东西</p>
+      <button id="emptyDemoBtn" class="ghostlink">试试示例</button>
+    </div>
+  </section>
+</main>
+
+<div id="help" class="sheet hidden" role="dialog" aria-modal="true" aria-label="设置">
+  <div class="sheet-body">
+    <div class="sheet-row">
+      <span>抖音第三方解析</span>
+      <label class="switch"><input id="tpToggle" type="checkbox" checked><i></i></label>
+    </div>
+    <button id="dyApiBtn" class="row-btn">抖音接口设置</button>
+    <button id="helpClose" class="primary small wide">好的</button>
+  </div>
+</div>
+
+<div id="bar" class="bar hidden">
+  <button id="selAll" class="ghost">全选</button>
+  <span id="selCount">已选 0 / 共 0</span>
+  <button id="downloadBtn" class="primary small" disabled>下载 <b id="selNum">0</b></button>
+</div>
+
+<div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="预览">
+  <div class="vw-top">
+    <button class="vw-btn" id="vwClose" aria-label="关闭">✕</button>
+    <span class="vw-count" id="vwCount">1 / 1</span>
+    <button class="vw-btn" id="vwDl" aria-label="下载">⤓</button>
+  </div>
+  <div class="vw-stage" id="vwStage"></div>
+  <button class="vw-nav prev" id="vwPrev" aria-label="上一张">‹</button>
+  <button class="vw-nav next" id="vwNext" aria-label="下一张">›</button>
+  <div class="vw-bottom">
+    <span class="vw-name" id="vwName"></span>
+    <div class="vw-acts">
+      <button class="vw-act" id="vwSelect">选中</button>
+      <button class="vw-act main hidden" id="vwConvert">转音频</button>
+    </div>
+  </div>
+</div>
+
+<div id="mini" class="hud hidden"><span class="spinner"></span><span id="miniText">转换中…</span></div>
+<div id="toast" class="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>海边黄昏 · 示例相册</title>
+<meta name="theme-color" content="#08090d">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: #e9ecf5;
+    font: 15px/1.6 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(120% 60% at 20% 0%, #1b2340 0%, #0a0c14 55%, #06070b 100%);
+    padding: max(20px, env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  header h1 { margin: 6px 0 4px; font-size: 24px; letter-spacing: .3px; }
+  header p { margin: 0 0 22px; color: #8d96ad; font-size: 13px; }
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px;
+    color: #9fe3c6; background: rgba(80, 220, 170, .12);
+    border: 1px solid rgba(80, 220, 170, .28); letter-spacing: .4px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 22px; }
+  .grid figure { margin: 0; border-radius: 14px; overflow: hidden; background: #141828; }
+  .grid img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+  .grid figcaption { padding: 7px 9px; font-size: 11px; color: #8d96ad; }
+  .player { border-radius: 16px; overflow: hidden; background: #10131f; border: 1px solid rgba(255,255,255,.06); }
+  video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+  footer { margin-top: 18px; color: #6b7386; font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">示例页面 · 离线可用</span>
+    <h1>海边黄昏</h1>
+    <p>四张照片和一段 6 秒小视频，用它们试试抓取和预览。</p>
+  </header>
+
+  <div class="grid">
+    <figure>
+      <img src="/demo/a1.jpg" width="900" height="1200" alt="黄昏海边的浪花">
+      <figcaption>浪花 · a1</figcaption>
+    </figure>
+    <figure>
+      <img src="/demo/a2.jpg" width="900" height="1200" alt="礁石与落日">
+      <figcaption>礁石 · a2</figcaption>
+    </figure>
+    <figure>
+      <img src="/demo/a3.jpg" width="900" height="1200" alt="暮色中的小岛">
+      <figcaption>小岛 · a3</figcaption>
+    </figure>
+    <figure>
+      <img src="/demo/a4.jpg" width="900" height="1200" alt="退回的潮水">
+      <figcaption>退潮 · a4</figcaption>
+    </figure>
+  </div>
+
+  <div class="player">
+    <video controls playsinline preload="metadata" poster="/demo/cover.jpg" src="/demo/clip.mp4">
+      你的浏览器不支持视频播放。
+    </video>
+  </div>
+
+  <footer>示例素材由脚本生成，可自由使用。</footer>
+</div>
+</body>
+</html>

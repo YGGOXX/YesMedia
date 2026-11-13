@@ -1,0 +1,19 @@
+.venv/
+build/
+dist/*.exe
+dist/*.apk
+__pycache__/
+*.pyc
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/src/main/python/
+third_party/ffmpeg/
+third_party/_unzip/
+tools/__pycache__/
+tests/__pycache__/
+*.log
+
+# 签名密钥只保留在本地，不进入公开仓库
+android/keystore/

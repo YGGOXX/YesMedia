@@ -1,0 +1,10 @@
+# Gradle / Android build outputs
+build/
+.gradle/
+local.properties
+app/build/
+app/src/main/python/webgrab/
+app/src/main/assets/webgrab-static/
+*.iml
+.idea/
+captures/
