@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WebGrab"
+rootProject.name = "YesMedia"
 include(":app")
