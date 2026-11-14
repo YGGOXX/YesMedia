@@ -17,3 +17,7 @@ tests/__pycache__/
 
 # 签名密钥只保留在本地，不进入公开仓库
 android/keystore/
+
+# Local YesMedia release signing configuration
+android/gradle.properties.local
+android/keystore.properties
