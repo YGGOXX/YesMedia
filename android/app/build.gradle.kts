@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-// WebGrab Android 壳：app 模块
+// YesMedia Android：app 模块
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,39 +11,42 @@ val webgrabRoot: File = rootProject.projectDir.parentFile
 // 构建机 Python：WebGrab 工程内的 .venv（Python 3.13，与 Chaquopy 目标版本一致）
 val buildPythonPath: String = File(webgrabRoot, ".venv/Scripts/python.exe").absolutePath
 
-val keystoreFile: File = rootProject.file(
-    (findProperty("WEBGRAB_STORE_FILE") as String?) ?: "keystore/webgrab.jks"
-)
-val keystorePassword: String = (findProperty("WEBGRAB_STORE_PASSWORD") as String?) ?: ""
-val keyAliasName: String = (findProperty("WEBGRAB_KEY_ALIAS") as String?) ?: "webgrab"
-val keyPassword: String = (findProperty("WEBGRAB_KEY_PASSWORD") as String?) ?: ""
-// 注意：signingConfigs 块里的属性名与脚本变量同名（keyPassword/storePassword），
-// 赋值时用别名绕开遮蔽，否则会把 null 赋给自己。
-val releaseKeyPassword = keyPassword.ifEmpty { keystorePassword }
+fun secret(name: String): String =
+    providers.gradleProperty(name).orElse(providers.environmentVariable(name)).orNull.orEmpty()
+
+val keystorePath = secret("YESMEDIA_STORE_FILE")
+val keystoreFile: File? = keystorePath.takeIf { it.isNotBlank() }?.let { rootProject.file(it) }
+val keystorePassword = secret("YESMEDIA_STORE_PASSWORD")
+val keyAliasName = secret("YESMEDIA_KEY_ALIAS")
+val keyPassword = secret("YESMEDIA_KEY_PASSWORD")
+val releaseSigningReady = keystoreFile?.isFile == true &&
+    keystorePassword.isNotBlank() && keyAliasName.isNotBlank() && keyPassword.isNotBlank()
 
 android {
     namespace = "com.webgrab.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.webgrab.app"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.0.1"
 
         // 目标设备只有 arm64（ffmpeg-kit 8.1 也只发布 arm64-v8a / x86_64）
         ndk {
-            abiFilters += "arm64-v8a"
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
     signingConfigs {
         create("release") {
-            storeFile = keystoreFile
-            storePassword = keystorePassword
-            keyAlias = keyAliasName
-            keyPassword = releaseKeyPassword
+            if (releaseSigningReady) {
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keyPassword
+            }
         }
     }
 
@@ -54,7 +57,7 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -76,19 +79,13 @@ android {
             pickFirsts += listOf("**/libc++_shared.so")
         }
         resources {
-            excludes += listOf(
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
-            )
+            excludes += listOf("META-INF/DEPENDENCIES")
         }
     }
 
     lint {
-        abortOnError = false
-        checkReleaseBuilds = false
+        abortOnError = true
+        checkReleaseBuilds = true
     }
 }
 
