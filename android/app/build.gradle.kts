@@ -135,6 +135,9 @@ chaquopy {
             // Build-time only: no index URL ends up in the APK.
             options("--index-url", "https://pypi.tuna.tsinghua.edu.cn/simple")
             options("--retries", "5")
+            // The pip HTTP cache lock can be left stale by an interrupted build,
+            // which makes pip wait forever. The APK build does not need the cache.
+            options("--no-cache-dir")
             install("requests")
             install("beautifulsoup4")
             install("yt-dlp")

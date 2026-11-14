@@ -29,7 +29,10 @@ function Resolve-Jdk {
         $java = Join-Path $candidate "bin\java.exe"
         $javac = Join-Path $candidate "bin\javac.exe"
         if ((Test-Path $java) -and (Test-Path $javac)) {
-            $version = (& $java -version 2>&1 | Out-String)
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            try { $version = (& $java -version 2>&1 | Out-String) }
+            finally { $ErrorActionPreference = $prevEap }
             if ($version -match 'version "17(?:\.|"|\+)') { return $candidate }
         }
     }
