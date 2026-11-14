@@ -33,7 +33,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- 系统分享面板：别的 App 分享文本时选「网页抓取器」 -->
+            <!-- 系统分享面板：别的 App 分享文本时选「YesMedia」 -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

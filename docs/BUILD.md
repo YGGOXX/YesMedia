@@ -48,7 +48,7 @@ cd android
 ```
 
 产物：`android\app\build\outputs\apk\release\app-release.apk` → 复制为
-`dist\网页抓取器-1.0.0-arm64.apk`，并写 `dist\SHA256SUMS.txt`。
+`dist\YesMedia-1.0.0-arm64.apk`，并写 `dist\SHA256SUMS.txt`。
 
 签名：`android/keystore/webgrab.jks`（自签名，口令见 `android/gradle.properties`）。
 只含 `arm64-v8a`；最低 Android 8.0（API 24），目标 API 35。
@@ -69,7 +69,7 @@ cd android
 .venv\Scripts\python.exe tools\douyin_probe.py "https://v.douyin.com/xxxx/"
 
 # Android 真机（可选）
-adb install -r dist\网页抓取器-1.0.0-arm64.apk
+adb install -r dist\YesMedia-1.0.0-arm64.apk
 adb shell am start -n com.webgrab.app/.MainActivity
 ```
 

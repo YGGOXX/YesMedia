@@ -40,10 +40,10 @@ $apk = Get-ChildItem (Join-Path $Android "app\build\outputs\apk\$variant") -Filt
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $apk) { throw "找不到 APK 产物" }
 
-$out = Join-Path $Dist "网页抓取器-1.0.0-arm64.apk"
+$out = Join-Path $Dist "YesMedia-1.0.0-arm64.apk"
 Copy-Item -Force $apk.FullName $out
 $h = (Get-FileHash $out -Algorithm SHA256).Hash.ToLower()
-$lines = @("$h  网页抓取器-1.0.0-arm64.apk")
+$lines = @("$h  YesMedia-1.0.0-arm64.apk")
 [IO.File]::WriteAllText((Join-Path $Dist "SHA256SUMS.txt"), (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
 "OK $out  $((Get-Item $out).Length) bytes"
 "SHA256 $h"

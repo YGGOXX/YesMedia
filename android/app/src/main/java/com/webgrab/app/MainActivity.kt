@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * 单 Activity 外壳：内嵌 WebView 显示本机 127.0.0.1:<port> 上的 WebGrab 前端。
  * Python 服务跑在 [GrabService] 里；本 Activity 只负责等 /api/health 就绪、加载页面、
- * 接系统分享文本、把网页下载交给 DownloadManager，并把文件保存到 下载/网页抓取器/。
+ * 接系统分享文本、把网页下载交给 DownloadManager，并把文件保存到 下载/YesMedia/。
  */
 @Suppress("DEPRECATION")
 class MainActivity : Activity() {
@@ -52,7 +52,7 @@ class MainActivity : Activity() {
         private const val REQ_FILE_CHOOSER = 1001
         private const val REQ_POST_NOTIFICATIONS = 1002
         private const val REQ_WRITE_STORAGE = 1003
-        private const val DOWNLOAD_SUBDIR = "网页抓取器"
+        private const val DOWNLOAD_SUBDIR = "YesMedia"
     }
 
     private lateinit var root: FrameLayout
@@ -479,7 +479,7 @@ class MainActivity : Activity() {
                         pending.contentDisposition, pending.mimeType
                     )
                 } else {
-                    toast("未授予存储权限，无法保存到「下载/网页抓取器」")
+                    toast("未授予存储权限，无法保存到「下载/YesMedia」")
                 }
             }
         }

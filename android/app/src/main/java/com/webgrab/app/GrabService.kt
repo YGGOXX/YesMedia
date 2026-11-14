@@ -116,7 +116,7 @@ class GrabService : Service() {
                 if (!stopping) {
                     goForeground(
                         buildNotification(
-                            "网页抓取器运行中",
+                            "YesMedia运行中",
                             "本地服务已就绪 · 端口 $port",
                             addStop = true
                         )

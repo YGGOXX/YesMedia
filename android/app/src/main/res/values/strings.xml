@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">网页抓取器</string>
+    <string name="app_name">YesMedia</string>
     <string name="notification_channel_name">本地服务</string>
-    <string name="notification_channel_desc">网页抓取器在本机运行时的常驻通知</string>
+    <string name="notification_channel_desc">YesMedia在本机运行时的常驻通知</string>
     <string name="notification_stop">停止</string>
 </resources>

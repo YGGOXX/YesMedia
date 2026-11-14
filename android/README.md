@@ -108,7 +108,7 @@ keytool -genkeypair -v -keystore android\keystore\webgrab.jks -storetype JKS `
 - 停止：通知栏「停止」→ `stopForeground` + `stopSelf` + 结束进程（Python 线程没有可控关闭点，
   杀进程才能真正释放端口）。
 - 分享：系统分享 `text/plain` 进来 → 加载 `/share?text=&url=`。
-- 下载：WebView `DownloadListener` → `DownloadManager`，保存到公共目录 `下载/网页抓取器/`；
+- 下载：WebView `DownloadListener` → `DownloadManager`，保存到公共目录 `下载/YesMedia/`；
   Android 10+ 的 IS_PENDING 由 DownloadManager 内部处理，Android 9 及以下会先申请
   `WRITE_EXTERNAL_STORAGE`。
 - 通知：Android 13+ 首次启动会申请 `POST_NOTIFICATIONS`（拒绝也能用，只是看不到常驻通知）。
@@ -153,7 +153,7 @@ raw = jclass("com.webgrab.app.douyin.DouyinResolver").resolve(url)  # 返回 str
 | 项目 | 结果 |
 | --- | --- |
 | `:app:assembleDebug` | BUILD SUCCESSFUL，`app-debug.apk` 62,447,707 字节（含抖音解析器） |
-| `:app:assembleRelease` | BUILD SUCCESSFUL，`dist/网页抓取器-1.0.0-arm64.apk` 61,460,462 字节（已用 `webgrab.jks` 签名） |
+| `:app:assembleRelease` | BUILD SUCCESSFUL，`dist/YesMedia-1.0.0-arm64.apk` 61,460,462 字节（已用 `webgrab.jks` 签名） |
 | `aapt2 dump badging` | package `com.webgrab.app`、versionName `1.0.0`、minSdk `24`、targetSdk `35`、native-code `arm64-v8a`；权限 INTERNET / ACCESS_NETWORK_STATE / POST_NOTIFICATIONS / FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC / WAKE_LOCK / WRITE_EXTERNAL_STORAGE(maxSdk 28) |
 | `apksigner verify` | OK，CN=WebGrab，SHA-256 `780344aa…5753ed` |
 | `zipalign -c -P 16` | 全部 `lib/arm64-v8a/*.so` 16KB 对齐 OK（含 libpython3.13、libffmpegkit、libavcodec 等） |

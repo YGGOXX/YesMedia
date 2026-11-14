@@ -1,5 +1,5 @@
 {
-  "name": "网页抓取器",
+  "name": "YesMedia",
   "short_name": "抓取器",
   "description": "粘贴网页链接，抓出里面的图片和视频；还能把视频转成音频。全部在本机完成。",
   "lang": "zh-CN",
