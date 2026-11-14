@@ -168,6 +168,12 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_static(path)
 
     def _post(self) -> None:
+        origin = (self.headers.get("Origin") or "").strip()
+        host = (self.headers.get("Host") or "").strip().lower()
+        fetch_site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if not origin or origin.lower() != ("http://" + host) or fetch_site in ("cross-site", "same-site"):
+            self._json(403, {"ok": False, "error": "请求来源不受允许"})
+            return
         if not self._host_allowed():
             self._json(403, {"ok": False, "error": "只能从本机访问"})
             return
