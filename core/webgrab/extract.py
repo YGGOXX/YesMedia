@@ -11,7 +11,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import requests
 from bs4 import BeautifulSoup
 
-from . import engines, net
+from . import engines, music, net
 
 IMG_EXT = {
     "jpg", "jpeg", "png", "gif", "webp", "bmp", "avif", "heic", "jfif", "tif", "tiff",
@@ -486,6 +486,19 @@ def scan_page(url: str, allow_third_party: bool = False, progress=None) -> dict:
     link = douyin_link or net.first_url(raw_input) or raw_input
     if not link.lower().startswith(("http://", "https://")):
         raise ScanError("链接格式不对，请粘贴 http 或 https 开头的网址", code="INVALID_INPUT")
+
+    # NetEase shares need a metadata-only path: generic media extraction can
+    # mistake album art for the requested song, while yt-dlp probes audio tiers.
+    if music.is_music_link(link):
+        if progress:
+            try:
+                progress("open", "解析网易云音乐分享链接")
+            except Exception:
+                pass
+        try:
+            return music.resolve_song(link)
+        except (ValueError, requests.RequestException) as exc:
+            raise ScanError(str(exc) or "网易云音乐解析失败", code="PAGE_LOAD_FAILED") from exc
 
     def report(stage: str, msg: str) -> None:
         if progress:

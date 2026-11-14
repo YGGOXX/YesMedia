@@ -94,7 +94,7 @@
 
   var state = {
     items: [],
-    groups: { image: [], video: [] },
+    groups: { image: [], video: [], music: [] },
     tab: 'all',
     sel: Object.create(null),
     selCount: 0,
@@ -157,13 +157,13 @@
   function fileName(it) {
     var n = String(it.name || '').trim();
     var ext = String(it.ext || '').trim().replace(/^\./, '');
-    if (!n) n = (it.kind === 'video' ? 'video' : 'image') + '-' + (it.id || 'item');
+    if (!n) n = (it.kind === 'video' ? 'video' : (it.kind === 'music' ? 'music' : 'image')) + '-' + (it.id || 'item');
     if (ext && !new RegExp('\\.' + ext + '$', 'i').test(n)) n += '.' + ext;
     return n.replace(/[\\/:*?"<>|\r\n]+/g, '_').slice(0, 80) || 'download';
   }
 
   function proxyUrl(it) {
-    var u = it.thumb || it.url;
+    var u = it.thumb || (it.kind === 'music' ? '' : it.url);
     if (!u) return '';
     return '/api/proxy?u=' + encodeURIComponent(u) + '&ref=' + encodeURIComponent(it.referer || '');
   }
@@ -439,17 +439,20 @@
     state.selCount = 0;
     state.tab = 'all';
 
-    var imgs = [], vids = [];
+    var imgs = [], vids = [], musics = [];
     state.items.forEach(function (it, i) {
       it._i = i;
-      if (it.kind === 'video') vids.push(i); else imgs.push(i);
+      if (it.kind === 'video') vids.push(i);
+      else if (it.kind === 'music') musics.push(i);
+      else imgs.push(i);
     });
-    state.groups = { image: imgs, video: vids };
+    state.groups = { image: imgs, video: vids, music: musics };
 
     els.pageTitle.textContent = res.title || hostOf(res.url || state.lastUrl) || '这个页面';
     var bits = [state.items.length + ' 项'];
     if (imgs.length) bits.push(imgs.length + ' 张图');
     if (vids.length) bits.push(vids.length + ' 个视频');
+    if (musics.length) bits.push(musics.length + ' 首音乐');
     els.pageMeta.textContent = bits.join(' · ');
 
     var note = res.note || (res.engine === 'douyin' ? '抖音第三方解析' : (res.engine === 'ytdlp' ? 'yt-dlp 解析' : ''));
@@ -467,20 +470,21 @@
     } else {
       els.empty.classList.add('hidden');
       els.grid.classList.remove('hidden');
-      els.tabs.classList.toggle('hidden', !(imgs.length && vids.length));
+      els.tabs.classList.toggle('hidden', (imgs.length + vids.length + musics.length) < 2);
     }
 
     els.result.classList.remove('hidden');
-    els.bar.classList.remove('hidden');
+    els.bar.classList.toggle('hidden', !state.items.some(function (it) { return it.kind !== 'music' && it.downloadable !== false; }));
     try { els.result.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {}
     return true;
   }
 
   function buildTabs() {
-    var imgs = state.groups.image.length, vids = state.groups.video.length;
+    var imgs = state.groups.image.length, vids = state.groups.video.length, musics = state.groups.music.length;
     var defs = [{ k: 'all', t: '全部', n: state.items.length }];
     if (imgs) defs.push({ k: 'image', t: '图片', n: imgs });
     if (vids) defs.push({ k: 'video', t: '视频', n: vids });
+    if (musics) defs.push({ k: 'music', t: '音乐', n: musics });
     els.tabs.innerHTML = '';
     defs.forEach(function (d) {
       var b = document.createElement('button');
@@ -501,18 +505,22 @@
   function tileHtml(it) {
     var thumb = proxyUrl(it);
     var isV = it.kind === 'video';
+    var isMusic = it.kind === 'music';
+    var downloadable = it.downloadable !== false && !isMusic;
     var name = fileName(it);
     var size = fmtSize(it.size);
     var inner = thumb
       ? '<img src="' + thumb + '" alt="' + esc(name) + '" loading="lazy" decoding="async">'
-      : '<span class="ph">' + (isV ? '▶' : '🖼') + '</span>';
-    return '<article class="tile" data-id="' + esc(it.id) + '" data-kind="' + (isV ? 'video' : 'image') + '">' +
+      : '<span class="ph">' + (isV ? '▶' : (isMusic ? '♫' : '🖼')) + '</span>';
+    return '<article class="tile' + (isMusic ? ' music-tile' : '') + '" data-id="' + esc(it.id) + '" data-kind="' + (isV ? 'video' : (isMusic ? 'music' : 'image')) + '">' +
       '<div class="thumb" role="button" tabindex="-1" aria-label="预览">' + inner +
-        '<span class="type' + (isV ? ' video' : '') + '">' + (isV ? '▶ 视频' : '图片') + '</span>' +
+        '<span class="type' + (isV ? ' video' : (isMusic ? ' music' : '')) + '">' + (isV ? '▶ 视频' : (isMusic ? '♫ 音乐' : '图片')) + '</span>' +
         (size ? '<span class="size">' + size + '</span>' : '') +
       '</div>' +
-      '<button class="check" type="button" aria-label="选中" aria-pressed="false"></button>' +
-      '<button class="tile-dl" type="button" aria-label="下载">⤓</button>' +
+      (isMusic ? '<div class="music-caption"><b>' + esc(it.name || '未知歌曲') + '</b><small>' + esc(it.artist || '网易云音乐') + '</small></div>' :
+        '<button class="check" type="button" aria-label="选中" aria-pressed="false"></button>') +
+      (isMusic ? '<button class="tile-play" type="button" aria-label="官方播放器试听">▶</button>' :
+        '<button class="tile-dl" type="button" aria-label="下载"' + (downloadable ? '' : ' disabled') + '>⤓</button>') +
     '</article>';
   }
 
@@ -535,11 +543,12 @@
 
   /* ---------- 选中 ---------- */
   function updateBar() {
-    var total = state.items.length;
+    var total = state.items.filter(function (it) { return it.downloadable !== false && it.kind !== 'music'; }).length;
     els.selCount.textContent = '已选 ' + state.selCount + ' / 共 ' + total;
     els.selNum.textContent = state.selCount;
     els.downloadBtn.disabled = !state.selCount || state.busyDl;
-    var list = visibleList();
+    els.dlAll.disabled = !total || state.busyDl;
+    var list = visibleList().filter(function (it) { return it.downloadable !== false && it.kind !== 'music'; });
     var all = list.length > 0 && list.every(function (it) { return !!state.sel[it.id]; });
     els.selAll.textContent = all ? '全不选' : '全选';
     els.selAll.setAttribute('data-all', all ? '1' : '0');
@@ -547,7 +556,7 @@
 
   function setSel(id, on) {
     var it = byId(id);
-    if (!it) return;
+    if (!it || it.kind === 'music' || it.downloadable === false) return;
     if (on) { if (!state.sel[id]) { state.sel[id] = true; state.selCount++; } }
     else { if (state.sel[id]) { delete state.sel[id]; state.selCount--; } }
     var node = els.grid.querySelector('.tile[data-id="' + cssEsc(id) + '"]');
@@ -575,6 +584,7 @@
 
   /* ---------- 下载 ---------- */
   function downloadMany(list, label) {
+    list = list.filter(function (it) { return it && it.kind !== 'music' && it.downloadable !== false; });
     if (!list.length) { toast('先选几项再下载', 'bad'); return Promise.resolve(0); }
     if (state.busyDl) { toast('正在下载，请稍等'); return Promise.resolve(0); }
     state.busyDl = true;
@@ -604,6 +614,7 @@
   }
 
   function downloadOne(it) {
+    if (!it || it.kind === 'music' || it.downloadable === false) { toast('音乐请使用网易云官方播放器试听'); return; }
     triggerDownload(dlUrl(it));
     toast('开始下载 ' + fileName(it));
     var node = els.grid.querySelector('.tile[data-id="' + cssEsc(it.id) + '"] .tile-dl');
@@ -640,7 +651,33 @@
     v.zoomed = false;
 
     var media;
-    if (it.kind === 'video') {
+    if (it.kind === 'music') {
+      var player = document.createElement('iframe');
+      var playerUrl = '';
+      try {
+        var parsed = new URL(it.play_url || '');
+        if (parsed.protocol === 'https:' && parsed.hostname === 'music.163.com' && parsed.pathname === '/outchain/player') playerUrl = parsed.href;
+      } catch (e) {}
+      if (playerUrl) {
+        player.src = playerUrl;
+        player.title = '网易云音乐官方播放器';
+        player.referrerPolicy = 'strict-origin-when-cross-origin';
+        player.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+        player.setAttribute('loading', 'lazy');
+        els.vwStage.appendChild(player);
+      } else {
+        var msg = document.createElement('p');
+        msg.textContent = '官方播放器链接不可用';
+        els.vwStage.appendChild(msg);
+      }
+      var official = document.createElement('a');
+      official.href = it.official_url || it.url;
+      official.target = '_blank';
+      official.rel = 'noopener noreferrer';
+      official.textContent = '在网易云音乐打开';
+      official.className = 'music-official-link';
+      els.vwStage.appendChild(official);
+    } else if (it.kind === 'video') {
       media = document.createElement('video');
       media.src = src;
       media.controls = true;
@@ -654,8 +691,10 @@
       media.alt = fileName(it);
       media.draggable = false;
     }
-    media.setAttribute('data-kind', it.kind);
-    els.vwStage.appendChild(media);
+    if (media) {
+      media.setAttribute('data-kind', it.kind);
+      els.vwStage.appendChild(media);
+    }
 
     els.vwCount.textContent = (v.idx + 1) + ' / ' + v.list.length;
     els.vwName.textContent = fileName(it);
@@ -668,6 +707,9 @@
   function syncViewerActs() {
     var it = state.viewer.list[state.viewer.idx];
     if (!it) return;
+    var isMusic = it.kind === 'music' || it.downloadable === false;
+    els.vwDl.classList.toggle('hidden', isMusic);
+    els.vwSelect.classList.toggle('hidden', isMusic);
     var on = !!state.sel[it.id];
     els.vwSelect.textContent = on ? '已选' : '选中';
     els.vwSelect.classList.toggle('on', on);
@@ -1043,6 +1085,7 @@
       if (!it) return;
       if (e.target.closest('.check')) { toggleSel(it.id); return; }
       if (e.target.closest('.tile-dl')) { downloadOne(it); return; }
+      if (e.target.closest('.tile-play')) { openViewer(it); return; }
       if (e.target.closest('.thumb')) { openViewer(it); return; }
     });
 
@@ -1059,7 +1102,7 @@
     });
 
     els.dlAll.addEventListener('click', function () {
-      var list = state.items.slice();
+      var list = state.items.filter(function (it) { return it.kind !== 'music' && it.downloadable !== false; });
       downloadMany(list, '下载中');
     });
 

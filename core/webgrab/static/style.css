@@ -824,6 +824,7 @@ main {
 }
 
 .thumb .type.video { color: #0a0b10; background: linear-gradient(120deg, #ffd8a8, #ff9f6b); border-color: transparent; }
+.thumb .type.music { color: #10131a; background: linear-gradient(120deg, #c4b4ff, #35d6f0); border-color: transparent; }
 
 .thumb .size {
   position: absolute;
@@ -895,6 +896,36 @@ main {
 
 .tile-dl:active { transform: scale(.9); }
 .tile-dl.busy { filter: grayscale(.4) brightness(.9); }
+
+.music-caption {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 30px 40px 9px 9px;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(4, 6, 12, .92));
+  pointer-events: none;
+}
+.music-caption b, .music-caption small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-caption b { font-size: 11px; line-height: 1.35; }
+.music-caption small { margin-top: 2px; color: rgba(235, 241, 255, .72); font-size: 9px; }
+.tile-play {
+  position: absolute;
+  z-index: 4;
+  right: 6px;
+  bottom: 7px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #10131a;
+  font-size: 11px;
+  background: linear-gradient(140deg, #c4b4ff, #35d6f0);
+  box-shadow: 0 5px 16px -7px #000;
+}
 
 /* 空态 -------------------------------------------------------- */
 .empty {
@@ -1132,6 +1163,22 @@ main {
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
+}
+.vw-stage iframe {
+  width: min(100%, 560px);
+  height: 118px;
+  flex: none;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+}
+.music-official-link {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(64px + var(--safe-b));
+  color: #bceeff;
+  font-size: 14px;
+  text-decoration: underline;
 }
 
 .vw-stage img.zoom { transform: scale(2.4); cursor: zoom-out; }
