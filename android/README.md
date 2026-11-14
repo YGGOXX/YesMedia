@@ -78,25 +78,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\copy_python.ps1   # 必须
 
 ## 签名
 
-`keystore/webgrab.jks` 是自签名密钥库，口令写在 `gradle.properties`：
-
-```properties
-WEBGRAB_STORE_FILE=keystore/webgrab.jks
-WEBGRAB_STORE_PASSWORD=webgrab2026
-WEBGRAB_KEY_ALIAS=webgrab
-WEBGRAB_KEY_PASSWORD=webgrab2026
-```
-
-重新生成（口令按需改）：
+Release 签名密码不存放在仓库中。请在本机 `~/.gradle/gradle.properties` 或环境变量中设置 `YESMEDIA_STORE_FILE`、`YESMEDIA_STORE_PASSWORD`、`YESMEDIA_KEY_ALIAS`、`YESMEDIA_KEY_PASSWORD`。保留原有签名密钥库，避免已安装版本无法覆盖升级。\n\n重新生成（口令按需改）：
 
 ```powershell
 keytool -genkeypair -v -keystore android\keystore\webgrab.jks -storetype JKS `
   -alias webgrab -keyalg RSA -keysize 2048 -validity 10000 `
   -storepass webgrab2026 -keypass webgrab2026 `
-  -dname "CN=WebGrab, OU=WebGrab, O=WebGrab, L=Local, ST=Local, C=CN"
+  -dname "CN=YesMedia, OU=YesMedia, O=YesMedia, L=Local, ST=Local, C=CN"
 ```
 
-> 这是本地自用签名，口令公开在仓库里；只用于自己安装，不用于分发。
+> 示例仅展示密钥生成命令格式。请使用安全的本机口令，不要将密钥库或口令提交到仓库。
 
 ## 运行时行为
 
