@@ -1,0 +1,6 @@
+# Copy this file to gradle.properties.local or pass values as environment variables.
+# Keep the real keystore outside version control.
+YESMEDIA_STORE_FILE=keystore/webgrab.jks
+YESMEDIA_STORE_PASSWORD=
+YESMEDIA_KEY_ALIAS=webgrab
+YESMEDIA_KEY_PASSWORD=
