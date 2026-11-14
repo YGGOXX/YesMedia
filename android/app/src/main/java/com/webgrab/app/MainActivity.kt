@@ -48,7 +48,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val TAG = "WebGrab"
-        const val USER_AGENT_SUFFIX = "WebGrabAndroid/1.0.0 WebGrabNative/1.0.0"
+        const val USER_AGENT_SUFFIX = "YesMediaAndroid/1.0.1"
         private const val REQ_FILE_CHOOSER = 1001
         private const val REQ_POST_NOTIFICATIONS = 1002
         private const val REQ_WRITE_STORAGE = 1003
@@ -141,9 +141,9 @@ class MainActivity : Activity() {
         s.builtInZoomControls = false
         s.useWideViewPort = true
         s.loadWithOverviewMode = true
-        s.allowFileAccess = true
+        s.allowFileAccess = false
         s.allowContentAccess = true
-        s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         s.userAgentString = WebSettings.getDefaultUserAgent(this) + " " + USER_AGENT_SUFFIX
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -165,11 +165,11 @@ class MainActivity : Activity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 // 页面内需要摄像头/麦克风（录音）时直接放行本机页面
-                val ok = request.resources.any {
+                val ok = false // Web page capture permissions are disabled in this release.
                     it == PermissionRequest.RESOURCE_AUDIO_CAPTURE ||
                         it == PermissionRequest.RESOURCE_VIDEO_CAPTURE
                 }
-                if (ok) request.grant(request.resources) else request.deny()
+                request.deny()
             }
 
             override fun onShowFileChooser(
@@ -198,7 +198,7 @@ class MainActivity : Activity() {
     /** 返回 true 表示本次导航已被处理（跳外部 App），false 表示交给 WebView 加载。 */
     private fun openExternalIfNeeded(uri: Uri): Boolean {
         val scheme = uri.scheme?.lowercase() ?: return false
-        if (scheme == "http" || scheme == "https") return false
+        if (scheme == "http" && uri.host == "127.0.0.1" && uri.port == serverPort && serverPort > 0) return false
         return try {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
             true
