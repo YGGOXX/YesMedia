@@ -1,10 +1,10 @@
-# WebGrab Android 壳
+# YesMedia Android 应用模块
 
-手机本地网页抓取工具的原生外壳：`MainActivity` 里放一个 WebView，显示跑在 `127.0.0.1` 上的
+YesMedia 本地网页媒体解析与下载工具的原生外壳：`MainActivity` 里放一个 WebView，显示跑在 `127.0.0.1` 上的
 WebGrab 前端；Python 后端（含 ffmpeg）跑在 `GrabService` 前台服务里，通过 Chaquopy 嵌入。
 
-- 包名 `com.webgrab.app`，`minSdk 24` / `targetSdk 35` / `compileSdk 35`
-- ABI 只有 `arm64-v8a`（ffmpeg-kit 8.1 也只发布 arm64-v8a、x86_64）
+- 包名 `com.webgrab.app`，`minSdk 24` / `targetSdk 36` / `compileSdk 36`
+- 目标 ABI 为 `arm64-v8a`、`x86_64`（需构建及运行验证）（ffmpeg-kit 8.1 也只发布 arm64-v8a、x86_64）
 - Python 3.13（Chaquopy 17.2.0），依赖 `requests`、`beautifulsoup4`、`yt-dlp`
 - ffmpeg：`dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.9`（LGPL 版，支持 SDK 35 与 16KB 页对齐）
 
@@ -27,7 +27,7 @@ android/
 | 组件 | 版本 / 路径 |
 | --- | --- |
 | JDK | 17（`JAVA_HOME=G:\tools\jdk17`） |
-| Android SDK | `ANDROID_HOME=G:\tools\android-sdk`，需 `platforms;android-35`、`build-tools;35.0.0`、`platform-tools` |
+| Android SDK | `ANDROID_HOME` 指向本机 SDK，需 `platforms;android-36`、对应 Build Tools、`platform-tools` |
 | Gradle | 8.13（仅用于生成 wrapper；日常构建用 `gradlew.bat`） |
 | 构建机 Python | `webgrab/.venv/Scripts/python.exe`，必须是 **Python 3.13**（与 Chaquopy 目标版本一致） |
 
@@ -148,18 +148,18 @@ raw = jclass("com.webgrab.app.douyin.DouyinResolver").resolve(url)  # 返回 str
 实现约束：只建 WebView，不新增权限、不改 manifest；能拿到当前 Activity 就挂 1x1 视图
 （否则游离加载）；结束后主线程 `destroy()`。
 
-## 已验证（2026-11-14，本机无 arm64 真机）
+## 验证状态\n\n1.0.1 的构建与设备验证尚待执行；下方旧版 1.0.0 数据仅作为历史记录，不代表 1.0.1 测试结果。\n\n## 1.0.0 历史验证记录
 
 | 项目 | 结果 |
 | --- | --- |
 | `:app:assembleDebug` | BUILD SUCCESSFUL，`app-debug.apk` 62,447,707 字节（含抖音解析器） |
 | `:app:assembleRelease` | BUILD SUCCESSFUL，`dist/YesMedia-1.0.0-arm64.apk` 61,460,462 字节（已用 `webgrab.jks` 签名） |
-| `aapt2 dump badging` | package `com.webgrab.app`、versionName `1.0.0`、minSdk `24`、targetSdk `35`、native-code `arm64-v8a`；权限 INTERNET / ACCESS_NETWORK_STATE / POST_NOTIFICATIONS / FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC / WAKE_LOCK / WRITE_EXTERNAL_STORAGE(maxSdk 28) |
+| `aapt2 dump badging` | package `com.webgrab.app`、versionName `1.0.1`、minSdk `24`、targetSdk `36`、native-code `arm64-v8a`, `x86_64`；权限 INTERNET / ACCESS_NETWORK_STATE / POST_NOTIFICATIONS / FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC / WAKE_LOCK / WRITE_EXTERNAL_STORAGE(maxSdk 28) |
 | `apksigner verify` | OK，CN=WebGrab，SHA-256 `780344aa…5753ed` |
 | `zipalign -c -P 16` | 全部 `lib/arm64-v8a/*.so` 16KB 对齐 OK（含 libpython3.13、libffmpegkit、libavcodec 等） |
 | APK 内容 | `assets/chaquopy/app.imy` 内含 `webgrab/*.pyc`（10 个模块 + convert 子包 + static）；`assets/webgrab-static` 16 个静态文件；arm64 原生库齐全；`classes.dex` 含 `com.webgrab.app.douyin.DouyinResolver` 与桌面 UA / `mime_type=video_mp4` / `playwm` 常量 |
 
-SHA-256（交付 release）：`2eee94d73f52b324e6d520841b0635ff2b04d858df4a17a3f8d52640951df180`。
+1.0.1 APK 的 SHA-256 必须在最终构建后重新生成；此处不沿用旧版本哈希。
 
 ## 已知限制
 
