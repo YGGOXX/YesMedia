@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$DebugBuild,
     [switch]$SkipCopy
 )
@@ -88,7 +88,9 @@ try {
     & $Py (Join-Path $Root "tools\check_python_sync.py")
     if ($LASTEXITCODE -ne 0) { throw "core/webgrab and generated Android Python sources differ." }
     $task = if ($DebugBuild) { "assembleDebug" } else { "assembleRelease" }
-    & (Join-Path $Android "gradlew.bat") $task --no-daemon
+    $gradleArgs = @($task, "--no-daemon")
+    if ($env:WEBGRAB_ABIS) { $gradleArgs += "-Pwebgrab.abis=$env:WEBGRAB_ABIS" }
+    & (Join-Path $Android "gradlew.bat") @gradleArgs
     if ($LASTEXITCODE -ne 0) { throw "Gradle $task failed." }
 } finally {
     Pop-Location

@@ -62,7 +62,11 @@ android {
         // Both ABIs are present in Chaquopy 17.2.0 Python runtimes and
         // ffmpeg-kit-full 8.1.9. Retain aapt/ZIP checks in release QA.
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // Release shrinking: allow -Pwebgrab.abis=arm64-v8a to produce a
+            // single-ABI APK (needed because the release host caps uploads at 64 MiB).
+            val abiOverride = (findProperty("webgrab.abis") as String?)
+                ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+            abiFilters += if (!abiOverride.isNullOrEmpty()) abiOverride else listOf("arm64-v8a", "x86_64")
         }
     }
 
