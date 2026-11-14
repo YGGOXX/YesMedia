@@ -6,12 +6,12 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Android = Join-Path $Root "android"
 $Dist = Join-Path $Root "dist"
-$Jdk = "G:\tools\jdk17"
-$Sdk = "G:\tools\android-sdk"
-$Gradle = "G:\tools\gradle-8.13"
+$Jdk = if ($env:JAVA_HOME) { $env:JAVA_HOME } else { "" }
+$Sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { "" }
 
-if (-not (Test-Path "$Jdk\bin\java.exe")) { throw "缺少 JDK17: $Jdk" }
-if (-not (Test-Path "$Sdk\platform-tools")) { throw "缺少 Android SDK: $Sdk" }
+
+if (-not $Jdk -or -not (Test-Path "$Jdk\bin\java.exe")) { throw "请先设置 JAVA_HOME 指向 JDK 17" }
+if (-not $Sdk -or -not (Test-Path "$Sdk\platform-tools")) { throw "请先设置 ANDROID_HOME 或 ANDROID_SDK_ROOT" }
 $env:JAVA_HOME = $Jdk
 $env:ANDROID_HOME = $Sdk
 $env:ANDROID_SDK_ROOT = $Sdk
@@ -40,7 +40,7 @@ $apk = Get-ChildItem (Join-Path $Android "app\build\outputs\apk\$variant") -Filt
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $apk) { throw "找不到 APK 产物" }
 
-$out = Join-Path $Dist "YesMedia-1.0.0-arm64.apk"
+$out = Join-Path $Dist "YesMedia-1.0.1-universal64.apk"
 Copy-Item -Force $apk.FullName $out
 $h = (Get-FileHash $out -Algorithm SHA256).Hash.ToLower()
 $lines = @("$h  YesMedia-1.0.0-arm64.apk")
