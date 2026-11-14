@@ -2,12 +2,14 @@
 build/
 dist/*.exe
 dist/*.apk
+dist/*.sha256
 __pycache__/
 *.pyc
 android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+android/keystore.properties
 android/app/src/main/python/
 third_party/ffmpeg/
 third_party/_unzip/

@@ -11,6 +11,7 @@ import threading
 import time
 import uuid
 import webbrowser
+from ipaddress import ip_address
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
@@ -124,7 +125,7 @@ class _Server(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "WebGrab/" + __version__
+    server_version = "YesMedia/" + __version__
     sys_version = ""
 
     # ------------------------------------------------------------ 入口
@@ -137,6 +138,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         self._wrap(self._post)
+
+    def do_OPTIONS(self) -> None:
+        self._wrap(self._options)
 
     def log_message(self, fmt: str, *args) -> None:
         # 契约要求不把用户 URL 写进日志，这里直接静默。
@@ -156,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
 
     def _get(self) -> None:
-        if not self._host_allowed():
+        if not self._request_origin_allowed():
             self._json(403, {"ok": False, "error": "只能从本机访问"})
             return
         parts = urlsplit(self.path)
@@ -168,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_static(path)
 
     def _post(self) -> None:
-        if not self._host_allowed():
+        if not self._request_origin_allowed():
             self._json(403, {"ok": False, "error": "只能从本机访问"})
             return
         parts = urlsplit(self.path)
@@ -187,19 +191,68 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._json(404, {"ok": False, "error": "接口不存在"})
 
-    def _host_allowed(self) -> bool:
-        host = (self.headers.get("Host") or "").strip().lower()
-        if not host:
+    def _request_origin_allowed(self) -> bool:
+        """Reject DNS-rebinding/cross-origin browser requests without breaking native clients.
+
+        The server is loopback-only. Host is mandatory and checked; Origin is checked when a
+        browser supplies it. Native WebView/DownloadManager clients that omit Origin remain
+        valid. Same-site is deliberately not treated as a failure by itself.
+        """
+        host = (self.headers.get("Host") or "").strip()
+        if not host or not self._local_authority_allowed(host):
+            return False
+        origin = (self.headers.get("Origin") or "").strip()
+        if origin:
+            if origin.lower() == "null":
+                return False
+            try:
+                parsed = urlsplit(origin)
+                if parsed.scheme.lower() != "http" or parsed.username or parsed.password:
+                    return False
+                if parsed.path or parsed.query or parsed.fragment:
+                    return False
+                if not parsed.hostname or not self._local_host_allowed(parsed.hostname):
+                    return False
+                if parsed.port != int(self.server.port):
+                    return False
+            except ValueError:
+                return False
+        fetch_site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if fetch_site == "cross-site":
+            return False
+        return True
+
+    def _local_host_allowed(self, host: str) -> bool:
+        normalized = host.rstrip(".").lower()
+        if normalized == "localhost":
             return True
-        if host.startswith("["):
-            name = host.split("]")[0] + "]"
-            return name in ("[::1]",)
-        name = host
-        if ":" in host:
-            maybe_name, maybe_port = host.rsplit(":", 1)
-            if maybe_port.isdigit():
-                name = maybe_name
-        return name in ("127.0.0.1", "localhost")
+        try:
+            return ip_address(normalized).is_loopback and normalized == "127.0.0.1"
+        except ValueError:
+            return False
+
+    def _local_authority_allowed(self, authority: str) -> bool:
+        try:
+            parsed = urlsplit("//" + authority)
+            if parsed.username or parsed.password or not parsed.hostname:
+                return False
+            if not self._local_host_allowed(parsed.hostname):
+                return False
+            return parsed.port == int(self.server.port)
+        except ValueError:
+            return False
+
+    def _options(self) -> None:
+        if not self._request_origin_allowed():
+            self._json(403, {"ok": False, "error": "只能从本机访问"})
+            return
+        # No CORS grant: the app uses same-origin requests; this is only a safe preflight reply.
+        self._headers_sent = True
+        self.send_response(204)
+        self.send_header("Allow", "GET, HEAD, POST, OPTIONS")
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
 
     # --------------------------------------------------------- 基础输出
 

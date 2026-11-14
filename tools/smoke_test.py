@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""WebGrab 端到端冒烟测试（不依赖外网）。
+"""YesMedia 端到端冒烟测试（不依赖外网）。
 
 用法（仓库根目录）：
     .venv\\Scripts\\python.exe tools\\smoke_test.py
@@ -219,7 +219,7 @@ def main() -> int:
     import webgrab.media as media
     import webgrab.server as server
 
-    print(f"WebGrab {webgrab.__version__} 冒烟测试")
+    print(f"YesMedia {webgrab.__version__} 冒烟测试")
     print(f"数据目录: {os.environ['WEBGRAB_HOME']}")
     print(f"ffmpeg: {media.ffmpeg_available()}  ({media.ffmpeg_dir()})")
 
@@ -236,14 +236,14 @@ def main() -> int:
     print(f"素材站: {base_url}")
 
     port = server.start(str(STATIC), 8765)
-    print(f"WebGrab 服务: http://127.0.0.1:{port}\n")
+    print(f"YesMedia 服务: http://127.0.0.1:{port}\n")
     try:
         # 1. health
         print("[1] /api/health")
         status, health = get_json(port, "/api/health")
         check("health 200", status == 200, f"status={status}")
         check("health ok", health.get("ok") is True)
-        check("health version", health.get("version") == "1.0.0")
+        check("health version", health.get("version") == webgrab.__version__)
         check("health platform", health.get("platform") == "windows")
         check("health port", health.get("port") == port, f"port={health.get('port')}")
         check("health ffmpeg 字段", isinstance(health.get("ffmpeg"), bool))

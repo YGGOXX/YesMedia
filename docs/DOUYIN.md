@@ -1,12 +1,14 @@
 # 抖音解析说明
 
+适用项目版本：YesMedia 1.0.1。平台页面、接口和风控行为会变化，以下步骤描述实现，不保证当前仍能从外部平台取得媒体地址。
+
 抖音网页版自身不带免登录媒体地址：分享页 `_ROUTER_DATA` 里只有作品 id，播放地址由客户端签名接口（`a_bogus` + `uifid`）下发。直接请求页面或公开接口在 2026-11 已基本不可用。
 
 ## Android：隐藏 WebView（主路径）
 
 App 在解析抖音时启动一个 1×1 的隐藏 WebView，加载真实视频页，等播放器拿到 MP4 后拦截/读取地址：
 
-1. **第一轮（无水印优先）**：桌面 Chrome UA 打开 `https://www.douyin.com/video/<id>`，拦截 `douyinvod.com` / `mime_type=video_mp4` 请求，同时轮询 `<video>` 的 `currentSrc`。命中即返回，`watermark=false`，下载时带 `Referer: https://www.douyin.com/`。PC 无头 Edge 实测 4 秒左右出地址，无 Cookie 也能 200/Range。
+1. **第一轮（无水印优先）**：桌面 Chrome UA 打开抖音视频页，拦截 `douyinvod.com` / `mime_type=video_mp4` 请求，同时轮询 `<video>` 的 `currentSrc`。命中即返回，`watermark=false`，下载时带 Referer。既有文档曾记录 PC 无头 Edge 的测试结果；本次未重复该测试，也未用它推断 Android 实机可用。
 2. **第二轮（兜底）**：8 秒没命中就销毁 WebView，换移动 UA 打开 `m.douyin.com/share/video/<id>`，读 `video.src` 的 `playwm` 地址。这条带水印，`watermark=true`，带 `Referer: https://m.douyin.com/`。
 3. 总预算 25 秒；超时、加载失败、HTTP ≥400 都返回中文原因，不会卡住界面。
 
@@ -14,7 +16,7 @@ App 在解析抖音时启动一个 1×1 的隐藏 WebView，加载真实视频�
 
 解析出的直链会过期。下载接口 `/api/dl` 收到 `via=dy` + `page=页面地址` 时，遇到 403/404/HTML 会自动重解析一次再重试；仍失败提示「抖音直链已过期，请重新解析」。
 
-风险：抖音有登录墙、验证码、地区限制时两轮都可能失败；风控策略变化会影响成功率。真机验证待补。
+风险：抖音有登录墙、验证码、地区限制时两轮都可能失败；风控策略变化会影响成功率。当前代码的真机验证尚未完成，外部站点行为也未在本次操作中验证。
 
 ## 其它平台：三层链（兜底）
 

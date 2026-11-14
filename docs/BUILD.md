@@ -1,82 +1,83 @@
-# 构建说明（可复现）
+# YesMedia 1.0.1 Build Guide
 
-## 0. 环境
+This guide describes repository build inputs, not a claim that a particular workstation, APK, or device has passed verification.
 
-- Windows 10/11 x64，非管理员即可。
-- Python 3.13（本机 `C:\Users\Administrator\AppData\Local\Programs\Python\Python313\python.exe`）。
-- JDK 17（`G:\tools\jdk17`）、Android SDK 35（`G:\tools\android-sdk`）、Gradle 8.13（`G:\tools\gradle-8.13`）。
-- 网络可访问 pypi 镜像、dl.google.com、maven.google.com、repo.maven.apache.org。
+## Requirements
 
-工程根：`E:\Documents\deepseek-harness\default-workspace\webgrab`。
+- Windows PowerShell (the provided `build_apk.ps1` is PowerShell)
+- JDK 17
+- Android SDK platform `android-35`, Build Tools with `aapt2`, and Platform Tools
+- Python 3.13 (the script creates the project `.venv` if needed)
+- Network access for Gradle, Maven and Chaquopy build dependencies
 
-## 1. 依赖（开发/测试用）
+`build_apk.ps1` detects JDK and SDK from `JAVA_HOME`, `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `android/local.properties`, and standard Windows installation locations. Set `JAVA_HOME` and/or `ANDROID_SDK_ROOT` explicitly when detection is ambiguous. Builds use the checked-in Gradle Wrapper (8.13); installing a separate Gradle distribution is not required.
 
-```powershell
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements-desktop.txt
-```
+## Build
 
-## 2. 本地开发
+Run from repository root:
 
 ```powershell
-$env:PYTHONPATH="$PWD\core"
-.venv\Scripts\python.exe -m webgrab.server --port 8765
-```
-
-Windows 开发需要 ffmpeg 在 PATH 或 `WEBGRAB_FFMPEG_DIR` 指向其目录（`third_party\ffmpeg\bin`）。
-重新获取：把 gyan.dev essentials zip 放到 `third_party\`，运行 `tools\prepare_third_party.ps1`。
-EXE 打包已停止，`desktop/` 仅保留开发启动器。
-
-## 3. 构建 APK
-
-一条命令：
-
-```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build_apk.ps1 -DebugBuild
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build_apk.ps1
 ```
 
-或手动：
+The first command produces `dist/YesMedia-1.0.1-debug.apk`; the second produces `dist/YesMedia-1.0.1-release.apk`. Each has a separate `.sha256` sidecar. A Debug build uses Android's debug key and never overwrites the Release artifact.
 
-```powershell
-$env:JAVA_HOME='G:\tools\jdk17'
-$env:ANDROID_HOME='G:\tools\android-sdk'
-$env:Path="G:\tools\jdk17\bin;$env:Path"
+Before Gradle runs, `copy_python.ps1` synchronizes `core/webgrab` and static UI files into generated Android source/assets and `tools/check_python_sync.py` checks the Python copy. Do not hand-edit generated copies.
 
-cd android
-.\copy_python.ps1          # core/webgrab -> app/src/main/python/webgrab
-.\gradlew.bat assembleRelease
+## Release signing
+
+Release signing credentials must be supplied privately through environment variables or user-level Gradle properties (`~/.gradle/gradle.properties`):
+
+```properties
+WEBGRAB_STORE_FILE=C:/private/keys/yesmedia-release.jks
+WEBGRAB_STORE_PASSWORD=<private value>
+WEBGRAB_KEY_ALIAS=<private alias>
+WEBGRAB_KEY_PASSWORD=<private value>
 ```
 
-产物：`android\app\build\outputs\apk\release\app-release.apk` → 复制为
-`dist\YesMedia-1.0.0-arm64.apk`，并写 `dist\SHA256SUMS.txt`。
+No real values belong in this repository. If release signing is absent or incomplete, `assembleRelease` fails with an explicit diagnostic; it does not quietly produce an unsigned APK. Never reuse credentials exposed in repository history; removing them from the current tree does not erase old commits.
 
-签名：`android/keystore/webgrab.jks`（自签名，口令见 `android/gradle.properties`）。
-只含 `arm64-v8a`；最低 Android 8.0（API 24），目标 API 35。
-
-改过 `core/webgrab/**` 或 `core/webgrab/static/**` 后必须重跑 `copy_python.ps1`，否则 APK 还是旧代码/旧页面。
-
-## 4. 测试
+## Automated checks
 
 ```powershell
-# 后端（需 ffmpeg 在 PATH 或 WEBGRAB_FFMPEG_DIR）
-.venv\Scripts\python.exe tools\smoke_test.py
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-desktop.txt
 .venv\Scripts\python.exe -m pytest tests -q
-
-# 前端（需先启动服务；用系统 Edge，不下载 Chromium）
-.venv\Scripts\python.exe tools\ui_test.py --base http://127.0.0.1:8765
-
-# 抖音源探测（可选；Android 桥需真机）
-.venv\Scripts\python.exe tools\douyin_probe.py "https://v.douyin.com/xxxx/"
-
-# Android 真机（可选）
-adb install -r dist\YesMedia-1.0.0-arm64.apk
-adb shell am start -n com.webgrab.app/.MainActivity
+.venv\Scripts\python.exe tools\smoke_test.py
 ```
 
-## 5. 已知构建风险
+The Android build script also runs the generated-source sync check. It creates `.venv` using Python 3.13 when needed but does not install desktop test dependencies automatically.
 
-- 网络抖动：大文件用断点续传脚本（`G:\tools\dl_loop.py`）；TLS 失败时改用 Python urllib。
-- Chaquopy 首次构建会从 maven.google.com 拉 AAR 与 pip 轮子，慢但可重试；pip 走清华镜像。
-- ffmpeg-kit-maintained 的 16KB page 对齐要求 AGP 8.5.1+，本工程用 8.9.2。
-- `build_apk.ps1` 含中文，必须保存为 UTF-8 **带 BOM**；PowerShell 5.1 需 `-ExecutionPolicy Bypass`。
-- 真机安装若报 `INSTALL_FAILED_USER_RESTRICTED`，在手机开发者选项里打开「USB 安装」并允许弹窗。
+Build a Debug APK from repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build_apk.ps1 -DebugBuild
+```
+
+For direct Gradle use, first run `android\copy_python.ps1` and `tools\check_python_sync.py`, then from the `android` directory run:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug --no-daemon
+```
+
+When Python 3.13 is installed under a different executable name, create `.venv` with that interpreter before building. Optional UI tests require their documented browser/runtime setup and should be reported separately.
+
+## APK and device checks
+
+After a successful build, inspect metadata and ABI contents before installing:
+
+```powershell
+$apk = '..\dist\YesMedia-1.0.1-debug.apk'
+& "$env:ANDROID_SDK_ROOT\build-tools\35.0.0\aapt2.exe" dump badging $apk
+adb devices -l
+adb install -r $apk
+adb shell am start -n com.webgrab.app/.MainActivity
+adb logcat -s YesMedia AndroidRuntime
+```
+
+The build requests `arm64-v8a` and `x86_64`. Confirm the APK contains the matching Chaquopy and FFmpeg native libraries (and no missing native dependency) before claiming either architecture. Emulator, tablet, landscape, split-window, WebView, real-site parsing, downloads, conversions, permissions, and foreground-service timeout behavior require separate runtime verification; do not infer those from Gradle success.
+
+## Android service lifecycle
+
+The app targets Android 15 (API 35) and declares `dataSync` because the service hosts the local Python server and supports downloads/conversion. Android 15 permits this type up to six hours in the background over 24 hours and invokes `Service.onTimeout`; the implementation stops rather than changing the service type. Reopen the app after timeout to restart the service. On Android 16, jobs started from a foreground service, including `DownloadManager`, must obey their job quotas. These limits mean uninterrupted long-running downloads are not guaranteed and must be tested on the actual OS version.

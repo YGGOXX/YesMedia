@@ -47,8 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MainActivity : Activity() {
 
     companion object {
-        private const val TAG = "WebGrab"
-        const val USER_AGENT_SUFFIX = "WebGrabAndroid/1.0.0 WebGrabNative/1.0.0"
+        private const val TAG = "YesMedia"
+        const val USER_AGENT_SUFFIX = "YesMediaAndroid/1.0.1 YesMediaNative/1.0.1"
         private const val REQ_FILE_CHOOSER = 1001
         private const val REQ_POST_NOTIFICATIONS = 1002
         private const val REQ_WRITE_STORAGE = 1003
@@ -61,6 +61,7 @@ class MainActivity : Activity() {
     private var pendingShareText: String? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var pendingDownload: PendingDownload? = null
+    private val recoveryScheduled = AtomicBoolean(false)
     private val io = Executors.newSingleThreadExecutor { r ->
         Thread(r, "webgrab-wait").apply { isDaemon = true }
     }
@@ -96,6 +97,29 @@ class MainActivity : Activity() {
         pendingShareText = extractSharedText(intent)
         startServiceIfNeeded()
         waitForServer()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!serviceStarted.get() || !recoveryScheduled.compareAndSet(false, true)) return
+        io.execute {
+            try {
+                val healthy = serverPort > 0 && healthOk(serverPort)
+                val state = getSharedPreferences(GrabService.PREFS, Context.MODE_PRIVATE)
+                    .getString(GrabService.KEY_STATE, null)
+                if (!healthy && (state == GrabService.STATE_STOPPED ||
+                        state == GrabService.STATE_ERROR || state == GrabService.STATE_RUNNING)) {
+                    main.post {
+                        serverPort = 0
+                        serviceStarted.set(false)
+                        startServiceIfNeeded()
+                        waitForServer()
+                    }
+                }
+            } finally {
+                recoveryScheduled.set(false)
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 边缘到边缘
@@ -141,21 +165,26 @@ class MainActivity : Activity() {
         s.builtInZoomControls = false
         s.useWideViewPort = true
         s.loadWithOverviewMode = true
-        s.allowFileAccess = true
+        s.allowFileAccess = false
+        // The system file chooser returns content:// URIs for user-selected uploads.
         s.allowContentAccess = true
-        s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         s.userAgentString = WebSettings.getDefaultUserAgent(this) + " " + USER_AGENT_SUFFIX
 
         CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false)
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
-            ): Boolean = openExternalIfNeeded(request.url)
+            ): Boolean {
+                if (!request.isForMainFrame) return false
+                return !isLocalServicePage(request.url) && openExternal(request.url)
+            }
 
             override fun shouldOverrideUrlLoading(view: WebView, url: String?): Boolean =
-                url != null && openExternalIfNeeded(Uri.parse(url))
+                url != null && !isLocalServicePage(Uri.parse(url)) && openExternal(Uri.parse(url))
 
             override fun onPageFinished(view: WebView, url: String?) {
                 Log.d(TAG, "onPageFinished: $url")
@@ -164,12 +193,9 @@ class MainActivity : Activity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                // 页面内需要摄像头/麦克风（录音）时直接放行本机页面
-                val ok = request.resources.any {
-                    it == PermissionRequest.RESOURCE_AUDIO_CAPTURE ||
-                        it == PermissionRequest.RESOURCE_VIDEO_CAPTURE
-                }
-                if (ok) request.grant(request.resources) else request.deny()
+                // No capture feature or corresponding Android runtime permissions are declared.
+                // Playback and user-selected file uploads do not require capture grants.
+                request.deny()
             }
 
             override fun onShowFileChooser(
@@ -196,9 +222,21 @@ class MainActivity : Activity() {
     }
 
     /** 返回 true 表示本次导航已被处理（跳外部 App），false 表示交给 WebView 加载。 */
-    private fun openExternalIfNeeded(uri: Uri): Boolean {
-        val scheme = uri.scheme?.lowercase() ?: return false
-        if (scheme == "http" || scheme == "https") return false
+    private fun isLocalServicePage(uri: Uri): Boolean =
+        uri.scheme.equals("http", ignoreCase = true) &&
+            uri.host.equals("127.0.0.1", ignoreCase = true) &&
+            uri.port == serverPort && serverPort > 0
+
+    private fun openExternal(uri: Uri): Boolean {
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == null) {
+            toast("已阻止不受支持的链接")
+            return true
+        }
+        if (scheme != "http" && scheme != "https") {
+            toast("已阻止不受支持的链接")
+            return true
+        }
         return try {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
             true

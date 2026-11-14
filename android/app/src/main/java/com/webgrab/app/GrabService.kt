@@ -27,7 +27,7 @@ import java.io.File
 class GrabService : Service() {
 
     companion object {
-        private const val TAG = "WebGrab"
+        private const val TAG = "YesMedia"
         const val PREFS = "webgrab"
         const val KEY_STATE = "state"
         const val KEY_PORT = "port"
@@ -60,6 +60,27 @@ class GrabService : Service() {
         val running = workThread?.isAlive == true
         if (!running) startWork()
         return START_NOT_STICKY
+    }
+
+    @android.annotation.TargetApi(35)
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        // Android 15 limits dataSync FGS time while the app is backgrounded. Stop promptly;
+        // ask the embedded server to release its loopback socket without changing service type.
+        Log.w(TAG, "dataSync foreground-service time limit reached; stopping local server")
+        stopping = true
+        prefs().edit()
+            .putString(KEY_STATE, STATE_STOPPED)
+            .putInt(KEY_PORT, 0)
+            .putString(KEY_ERROR, "后台服务达到系统运行时限，请重新打开 YesMedia 以继续")
+            .apply()
+        Thread({
+            try {
+                if (Python.isStarted()) Python.getInstance().getModule("webgrab.server").callAttr("stop")
+            } catch (t: Throwable) {
+                Log.w(TAG, "server shutdown after FGS timeout failed", t)
+            }
+        }, "webgrab-timeout-stop").start()
+        stopSelf(startId)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

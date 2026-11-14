@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-// WebGrab Android 壳：app 模块
+// YesMedia Android app module
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -8,18 +8,45 @@ plugins {
 }
 
 val webgrabRoot: File = rootProject.projectDir.parentFile
-// 构建机 Python：WebGrab 工程内的 .venv（Python 3.13，与 Chaquopy 目标版本一致）
-val buildPythonPath: String = File(webgrabRoot, ".venv/Scripts/python.exe").absolutePath
+// Build Python: project-local Python 3.13 virtual environment, matching Chaquopy.
+val buildPythonPath: String = System.getenv("WEBGRAB_BUILD_PYTHON")
+    ?: File(webgrabRoot, ".venv/Scripts/python.exe").absolutePath
 
 val keystoreFile: File = rootProject.file(
-    (findProperty("WEBGRAB_STORE_FILE") as String?) ?: "keystore/webgrab.jks"
+    System.getenv("WEBGRAB_STORE_FILE")
+        ?: (findProperty("WEBGRAB_STORE_FILE") as String?)
+        ?: "keystore/webgrab.jks"
 )
-val keystorePassword: String = (findProperty("WEBGRAB_STORE_PASSWORD") as String?) ?: ""
-val keyAliasName: String = (findProperty("WEBGRAB_KEY_ALIAS") as String?) ?: "webgrab"
-val keyPassword: String = (findProperty("WEBGRAB_KEY_PASSWORD") as String?) ?: ""
-// 注意：signingConfigs 块里的属性名与脚本变量同名（keyPassword/storePassword），
-// 赋值时用别名绕开遮蔽，否则会把 null 赋给自己。
-val releaseKeyPassword = keyPassword.ifEmpty { keystorePassword }
+val keystorePassword: String = System.getenv("WEBGRAB_STORE_PASSWORD")
+    ?: (findProperty("WEBGRAB_STORE_PASSWORD") as String?) ?: ""
+val keyAliasName: String = System.getenv("WEBGRAB_KEY_ALIAS")
+    ?: (findProperty("WEBGRAB_KEY_ALIAS") as String?) ?: ""
+val releaseKeyPassword: String = System.getenv("WEBGRAB_KEY_PASSWORD")
+    ?: (findProperty("WEBGRAB_KEY_PASSWORD") as String?) ?: keystorePassword
+val releaseSigningConfigured = keystoreFile.isFile && keystorePassword.isNotBlank() &&
+    keyAliasName.isNotBlank() && releaseKeyPassword.isNotBlank()
+
+if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) } &&
+    !releaseSigningConfigured
+) {
+    throw GradleException(
+        "Release signing is not configured. Provide WEBGRAB_STORE_FILE, " +
+            "WEBGRAB_STORE_PASSWORD, WEBGRAB_KEY_ALIAS and WEBGRAB_KEY_PASSWORD " +
+            "through environment variables or private Gradle properties. No unsigned release APK was produced."
+    )
+}
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.name.contains("Release", ignoreCase = true) } &&
+        !releaseSigningConfigured
+    ) {
+        throw GradleException(
+            "Release signing is not configured. Provide WEBGRAB_STORE_FILE, " +
+                "WEBGRAB_STORE_PASSWORD, WEBGRAB_KEY_ALIAS and WEBGRAB_KEY_PASSWORD " +
+                "through environment variables or private Gradle properties. No unsigned release APK was produced."
+        )
+    }
+}
 
 android {
     namespace = "com.webgrab.app"
@@ -29,12 +56,13 @@ android {
         applicationId = "com.webgrab.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
-        // 目标设备只有 arm64（ffmpeg-kit 8.1 也只发布 arm64-v8a / x86_64）
+        // Both ABIs are present in Chaquopy 17.2.0 Python runtimes and
+        // ffmpeg-kit-full 8.1.9. Retain aapt/ZIP checks in release QA.
         ndk {
-            abiFilters += "arm64-v8a"
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -54,7 +82,7 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningConfigured) signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
